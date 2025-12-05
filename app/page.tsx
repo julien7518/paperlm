@@ -10,6 +10,16 @@ export default function Home() {
   const [messages, setMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
   >([]);
+  const [systemPrompt, setSystemPrompt] = useState<string>(
+    `You are PaperLM, a research-focused AI.  
+Always format your responses using clean professional Markdown (if needed):
+- Use headlines (#, ##, ###)
+- Use bullet points and numbered lists
+- Use fenced code blocks for code snippets
+- Use LaTeX for equations: $E = mc^2$ or $$\int_0^\infty f(x)\,dx$$
+- Use tables when relevant
+Your output must always be valid markdown and render beautifully.`
+  );
 
   const {
     model,
@@ -18,7 +28,6 @@ export default function Home() {
     setTemperature,
     topP,
     setTopP,
-    isLoadingModel,
     statusText,
     generate,
   } = useWebLLM();
@@ -30,18 +39,31 @@ export default function Home() {
     // Start assistant response (empty)
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
-    const stream = await generate([
-      ...messages,
-      { role: "user", content: msg },
-    ]);
+    try {
+      const messagesWithSystem = [
+        { role: "system" as const, content: systemPrompt },
+        ...messages,
+        { role: "user" as const, content: msg },
+      ];
 
-    for await (const chunk of stream) {
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1].content +=
-          chunk.choices[0]?.delta?.content || "";
-        return updated;
-      });
+      const stream = await generate(messagesWithSystem);
+
+      let fullResponse = "";
+      for await (const chunk of stream) {
+        const content = chunk.choices?.[0]?.delta?.content;
+        if (content) {
+          fullResponse += content;
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1].content = fullResponse;
+            return updated;
+          });
+        }
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error("Generation error:", errMsg);
+      // Keep the partial response that was already added
     }
   };
 
@@ -60,9 +82,8 @@ export default function Home() {
       const blob = new Blob([dataStr], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const now = new Date().toISOString().replace(/[:.]/g, "-");
       a.href = url;
-      a.download = `conversation-${now}.json`;
+      a.download = `paperLM-conversation.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -77,7 +98,7 @@ export default function Home() {
     <div className="flex h-screen">
       {/* Chat */}
       <div className="flex flex-col flex-1">
-        <ChatContainer messages={messages} isModelLoading={isLoadingModel} />
+        <ChatContainer messages={messages} />
         <ChatInput onSend={handleSend} />
       </div>
 
@@ -93,6 +114,8 @@ export default function Home() {
         onClear={clearMessages}
         onExport={exportMessages}
         hasMessages={messages.length > 0}
+        systemPrompt={systemPrompt}
+        onChangeSystemPrompt={setSystemPrompt}
       />
     </div>
   );

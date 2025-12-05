@@ -3,10 +3,10 @@
 import { useEffect, useState, useRef } from "react";
 import { CreateMLCEngine, MLCEngine } from "@mlc-ai/web-llm";
 
-type Role = "user" | "assistant";
+type Role = "user" | "assistant" | "system";
 
 export function useWebLLM() {
-  const [model, setModel] = useState("Phi-3.5-mini-instruct");
+  const [model, setModel] = useState("Llama-3.2-3B-Instruct-q4f16_1-MLC");
   const [temperature, setTemperature] = useState(0.7);
   const [topP, setTopP] = useState(0.9);
 

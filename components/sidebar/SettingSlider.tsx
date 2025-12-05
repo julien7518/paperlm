@@ -13,7 +13,7 @@ interface SettingsSliderProps {
 
 export function SettingsSlider({
   label,
-  min = 0,
+  min = 0.01,
   max = 1,
   step = 0.01,
   defaultValue = 0.5,
