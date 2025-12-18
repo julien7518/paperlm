@@ -9,6 +9,7 @@ export function useWebLLM() {
   const [model, setModel] = useState("Llama-3.2-3B-Instruct-q4f16_1-MLC");
   const [temperature, setTemperature] = useState(0.7);
   const [topP, setTopP] = useState(0.9);
+  const [maxTokens, setMaxTokens] = useState(512);
 
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [statusText, setStatusText] = useState("Idle");
@@ -53,7 +54,9 @@ export function useWebLLM() {
       messages,
       temperature,
       top_p: topP,
+      max_tokens: maxTokens,
       stream: true,
+      stream_options: { include_usage: true },
     });
 
     return completion;
@@ -66,6 +69,8 @@ export function useWebLLM() {
     setTemperature,
     topP,
     setTopP,
+    maxTokens,
+    setMaxTokens,
     isLoadingModel,
     statusText,
     generate,
