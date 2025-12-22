@@ -19,6 +19,8 @@ interface SidebarProps {
   onChangeTemperature: (v: number) => void;
   topP: number;
   onChangeTopP: (v: number) => void;
+  maxTokens: number;
+  onChangeMaxTokens: (v: number) => void;
   status: string;
   onClear: () => void;
   onExport: () => void;

@@ -10,16 +10,34 @@ export default function Home() {
   const [messages, setMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
   >([]);
-  const [systemPrompt, setSystemPrompt] = useState<string>(
-    `You are PaperLM, a research-focused AI.  
-Always format your responses using clean professional Markdown (if needed):
-- Use headlines (#, ##, ###)
-- Use bullet points and numbered lists
-- Use fenced code blocks for code snippets
-- Use LaTeX for equations: $E = mc^2$ or $$\int_0^\infty f(x)\,dx$$
-- Use tables when relevant
-Your output must always be valid markdown and render beautifully.`
-  );
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [systemPrompt, setSystemPrompt] =
+    useState<string>(`You are **PaperLM**, an academic research assistant specialized in analyzing and synthesizing scientific papers.
+
+### Core Rules
+- Use **only the provided context** (retrieved documents + chat history).
+- **Do not hallucinate** papers, authors, results, or citations.
+- If the context is insufficient, **say so explicitly**.
+
+### Writing Style
+- Professional, academic, and concise.
+- Prefer **synthesis over paraphrase**.
+- Highlight comparisons, limitations, and disagreements when relevant.
+
+### Output Format (Mandatory)
+- Valid, clean **Markdown only**
+- Use headings, bullet points, tables when useful
+- Use LaTeX for equations: \`$E = mc^2$\`, blocks allowed
+- No emojis, no casual tone, no filler
+
+### Grounding
+- Clearly reference the provided documents when used
+- Never cite external sources unless explicitly given
+
+If the question cannot be answered reliably with the context, explain why and state what is missing.
+
+You are a research assistant. Accuracy and structure matter more than verbosity.
+`);
 
   const {
     model,
@@ -29,12 +47,17 @@ Your output must always be valid markdown and render beautifully.`
     topP,
     setTopP,
     statusText,
+    isLoadingModel,
+    maxTokens,
+    setMaxTokens,
     generate,
   } = useWebLLM();
 
   const handleSend = async (msg: string) => {
     // Add user prompt
     setMessages((prev) => [...prev, { role: "user", content: msg }]);
+    // clear reply target when sending
+    setReplyTo(null);
 
     // Start assistant response (empty)
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
@@ -98,8 +121,16 @@ Your output must always be valid markdown and render beautifully.`
     <div className="flex h-screen">
       {/* Chat */}
       <div className="flex flex-col flex-1">
-        <ChatContainer messages={messages} />
-        <ChatInput onSend={handleSend} />
+        <ChatContainer
+          messages={messages}
+          onReply={(content) => setReplyTo(content)}
+        />
+        <ChatInput
+          onSend={handleSend}
+          isModelReady={!isLoadingModel && statusText === "Ready"}
+          replyTo={replyTo}
+          onClearReply={() => setReplyTo(null)}
+        />
       </div>
 
       {/* Sidebar */}
@@ -110,6 +141,8 @@ Your output must always be valid markdown and render beautifully.`
         onChangeTemperature={setTemperature}
         topP={topP}
         onChangeTopP={setTopP}
+        maxTokens={maxTokens}
+        onChangeMaxTokens={setMaxTokens}
         status={statusText}
         onClear={clearMessages}
         onExport={exportMessages}

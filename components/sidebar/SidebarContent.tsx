@@ -5,6 +5,7 @@ import { SettingsSlider } from "./SettingSlider";
 import { MaxTokensInput } from "./MaxTokensInput";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ModeToggle } from "@/components/ui/mode-toggle";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -30,6 +31,8 @@ interface SidebarContentProps {
   onChangeTemperature: (v: number) => void;
   topP: number;
   onChangeTopP: (v: number) => void;
+  maxTokens: number;
+  onChangeMaxTokens: (v: number) => void;
   status: string;
   onClear: () => void;
   onExport: () => void;
@@ -45,6 +48,8 @@ export function SidebarContent({
   onChangeTemperature,
   topP,
   onChangeTopP,
+  maxTokens,
+  onChangeMaxTokens,
   status,
   onClear,
   onExport,
@@ -73,7 +78,7 @@ export function SidebarContent({
           step={0.01}
           onChange={onChangeTopP}
         />
-        <MaxTokensInput />
+        <MaxTokensInput value={maxTokens} onChange={onChangeMaxTokens} />
       </div>
 
       <Accordion type="single" collapsible>
@@ -84,13 +89,16 @@ export function SidebarContent({
               value={systemPrompt}
               onChange={(e) => onChangeSystemPrompt(e.target.value)}
               placeholder="Enter system prompt for the LLM..."
-              className="min-h-[120px] text-xs resize-none"
+              className="max-h-[138px] text-xs resize-none"
             />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
 
       <div className="mt-auto space-y-2">
+        <div className="flex justify-end">
+          <ModeToggle />
+        </div>
         {hasMessages ? (
           <AlertDialog>
             <AlertDialogTrigger asChild>
