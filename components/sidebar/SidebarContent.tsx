@@ -89,7 +89,7 @@ export function SidebarContent({
               value={systemPrompt}
               onChange={(e) => onChangeSystemPrompt(e.target.value)}
               placeholder="Enter system prompt for the LLM..."
-              className="min-h-[120px] text-xs resize-none"
+              className="max-h-[138px] text-xs resize-none"
             />
           </AccordionContent>
         </AccordionItem>

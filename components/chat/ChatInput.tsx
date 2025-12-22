@@ -37,8 +37,8 @@ export function ChatInput({
         <div className="flex-1">
           {replyTo && (
             <div className="mb-2 flex items-center justify-between rounded border px-3 py-1 text-sm">
-              <div className="truncate">
-                Répondre à : {replyTo.split("\n")[0]}
+              <div className="truncate max-w-2xl">
+                Respond to : {replyTo.split("\n")[0]}
               </div>
               <Button
                 variant="ghost"
