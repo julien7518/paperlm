@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { ChatContainer } from "@/components/chat/ChatContainer";
 import { ChatInput } from "@/components/chat/ChatInput";
-import { SidebarControls } from "@/components/sidebar/SidebarControls";
+import { SidebarControls } from "@/components/model-sidebar/SidebarControls";
+import { PdfSidebarControls } from "@/components/pdf-sidebar/PdfSidebarControls";
 import { useWebLLM } from "@/lib/hooks/useWebLLM";
 
 export default function Home() {
@@ -36,8 +37,7 @@ export default function Home() {
 
 If the question cannot be answered reliably with the context, explain why and state what is missing.
 
-You are a research assistant. Accuracy and structure matter more than verbosity.
-`);
+You are a research assistant. Accuracy and structure matter more than verbosity.`);
 
   const {
     model,
@@ -52,6 +52,16 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
     setMaxTokens,
     generate,
   } = useWebLLM();
+
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+
+  const handleFileUpload = (files: File[]) => {
+    setUploadedFiles((prev) => [...prev, ...files]);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSend = async (msg: string) => {
     // Add user prompt
@@ -119,7 +129,14 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
 
   return (
     <div className="flex h-screen">
-      {/* Chat */}
+      {/* PDF Sidebar - Left */}
+      <PdfSidebarControls
+        onFileUpload={handleFileUpload}
+        uploadedFiles={uploadedFiles}
+        onRemoveFile={handleRemoveFile}
+      />
+
+      {/* Chat - Center */}
       <div className="flex flex-col flex-1">
         <ChatContainer
           messages={messages}
@@ -133,7 +150,7 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
         />
       </div>
 
-      {/* Sidebar */}
+      {/* Model Sidebar - Right */}
       <SidebarControls
         model={model}
         onChangeModel={setModel}

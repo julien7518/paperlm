@@ -1,0 +1,133 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState, useCallback } from "react";
+import { useDropzone } from "react-dropzone";
+import { FileText, FileUp, Trash2 } from "lucide-react";
+
+interface PdfSidebarContentProps {
+  onFileUpload: (files: File[]) => void;
+  uploadedFiles: File[];
+  onRemoveFile: (index: number) => void;
+}
+
+export function PdfSidebarContent({
+  onFileUpload,
+  uploadedFiles,
+  onRemoveFile,
+}: PdfSidebarContentProps) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      onFileUpload(acceptedFiles);
+      setIsDragging(false);
+    },
+    [onFileUpload]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/pdf": [".pdf"],
+      "text/plain": [".txt"],
+      "text/markdown": [".md"],
+    },
+    maxFiles: 5,
+    onDragEnter: () => setIsDragging(true),
+    onDragLeave: () => setIsDragging(false),
+  });
+
+  return (
+    <div className="flex flex-col h-full gap-4">
+      {/* Dropzone Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Upload Files</CardTitle>
+          <CardDescription className="text-xs">
+            Drag & drop .pdf, .txt or .md files, or click to browse
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            {...getRootProps()}
+            className={`flex flex-col items-center justify-center gap-4 p-6 border-2 border-dashed rounded-lg cursor-pointer ${
+              isDragActive || isDragging
+                ? "border-primary bg-primary/10"
+                : "border-border"
+            }`}
+          >
+            <input {...getInputProps()} />
+            <FileUp className="size-6 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground text-center">
+              {isDragActive ? "Drop the files here" : "Click or drag files"}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs cursor-pointer"
+            >
+              Browse Files
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Uploaded Files List */}
+      <div className="flex-1">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Uploaded Files</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {uploadedFiles.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-8">
+                <FileText className="size-6 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  No files uploaded yet
+                </p>
+              </div>
+            ) : (
+              <ScrollArea className="h-[200px]">
+                <div className="space-y-3">
+                  {uploadedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between gap-2 p-2 border rounded-lg"
+                    >
+                      <div className="flex items-center truncate gap-2 flex-1">
+                        <FileText className="size-4 text-muted-foreground" />
+                        <div className="text-xs truncate">
+                          <p className="font-medium">{file.name}</p>
+                          <p className="text-muted-foreground">
+                            {file.type} - {(file.size / 1024).toFixed(2)} KB
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => onRemoveFile(index)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
