@@ -6,12 +6,14 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { SidebarControls } from "@/components/model-sidebar/SidebarControls";
 import { PdfSidebarControls } from "@/components/pdf-sidebar/PdfSidebarControls";
 import { useWebLLM } from "@/lib/hooks/useWebLLM";
+import { useDocumentProcessing } from "@/lib/hooks/useDocumentProcessing";
 
 export default function Home() {
   const [messages, setMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
   >([]);
   const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [systemPrompt, setSystemPrompt] =
     useState<string>(`You are **PaperLM**, an academic research assistant specialized in analyzing and synthesizing scientific papers.
 
@@ -53,13 +55,38 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
     generate,
   } = useWebLLM();
 
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  // Document processing
+  const {
+    processedDocuments,
+    isProcessing,
+    processingProgress,
+    embeddingModelStatus,
+    error,
+    processFiles,
+    clearDocuments,
+    removeDocument,
+  } = useDocumentProcessing();
 
-  const handleFileUpload = (files: File[]) => {
-    setUploadedFiles((prev) => [...prev, ...files]);
+  const handleFileUpload = async (files: File[]) => {
+    try {
+      // Add files to UI immediately
+      setUploadedFiles(prev => [...prev, ...files]);
+      
+      // Process files for chunking and embedding
+      await processFiles(files);
+    } catch (error) {
+      console.error("Error processing files:", error);
+    }
   };
 
   const handleRemoveFile = (index: number) => {
+    const file = uploadedFiles[index];
+    // Remove from document store
+    const docToRemove = processedDocuments.find(doc => doc.fileName === file.name);
+    if (docToRemove) {
+      removeDocument(docToRemove.fileId);
+    }
+    // Remove from UI
     setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -128,16 +155,28 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-screen overflow-hidden">
       {/* PDF Sidebar - Left */}
       <PdfSidebarControls
         onFileUpload={handleFileUpload}
         uploadedFiles={uploadedFiles}
         onRemoveFile={handleRemoveFile}
+        isProcessing={isProcessing}
+        processingProgress={processingProgress}
+        embeddingModelStatus={embeddingModelStatus}
+        error={error}
+        memoryStats={{
+          documentCount: processedDocuments.length,
+          chunkCount: processedDocuments.reduce((sum, doc) => sum + doc.chunks.length, 0),
+          embeddingCount: processedDocuments.reduce((sum, doc) => sum + (doc.embeddings?.length || 0), 0),
+          totalChunkSize: processedDocuments.reduce((sum, doc) => 
+            sum + doc.chunks.reduce((chunkSum, chunk) => chunkSum + chunk.content.length, 0), 0
+          ),
+        }}
       />
 
       {/* Chat - Center */}
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <ChatContainer
           messages={messages}
           onReply={(content) => setReplyTo(content)}

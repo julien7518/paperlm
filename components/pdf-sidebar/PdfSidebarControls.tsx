@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PdfSidebarContent } from "./PdfSidebarContent";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import { ScrollArea } from "../ui/scroll-area";
 import {
   Sheet,
   SheetTrigger,
@@ -16,24 +17,63 @@ interface PdfSidebarProps {
   onFileUpload: (files: File[]) => void;
   uploadedFiles: File[];
   onRemoveFile: (index: number) => void;
+  isProcessing: boolean;
+  processingProgress: {
+    currentFile: string | null;
+    processedFiles: number;
+    totalFiles: number;
+    status: string;
+  };
+  embeddingModelStatus: string;
+  error: string | null;
+  memoryStats: {
+    documentCount: number;
+    chunkCount: number;
+    embeddingCount: number;
+    totalChunkSize: number;
+  };
 }
 
 export function PdfSidebarControls({
   onFileUpload,
   uploadedFiles,
   onRemoveFile,
+  isProcessing = false,
+  processingProgress = {
+    currentFile: null,
+    processedFiles: 0,
+    totalFiles: 0,
+    status: "idle",
+  },
+  embeddingModelStatus = "not_loaded",
+  error = null,
+  memoryStats = {
+    documentCount: 0,
+    chunkCount: 0,
+    embeddingCount: 0,
+    totalChunkSize: 0,
+  },
 }: PdfSidebarProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
     <>
       {/* Desktop Sidebar - hidden on mobile */}
-      <div className="hidden lg:flex h-full w-72 border-r border-border p-4 flex-col gap-6 bg-background">
-        <PdfSidebarContent
-          onFileUpload={onFileUpload}
-          uploadedFiles={uploadedFiles}
-          onRemoveFile={onRemoveFile}
-        />
+      <div className="hidden lg:flex h-screen w-80 border-r border-border bg-background">
+        <ScrollArea className="h-full w-full p-4">
+          <div className="flex flex-col h-full gap-6">
+            <PdfSidebarContent
+              onFileUpload={onFileUpload}
+              uploadedFiles={uploadedFiles}
+              onRemoveFile={onRemoveFile}
+              isProcessing={isProcessing}
+              processingProgress={processingProgress}
+              embeddingModelStatus={embeddingModelStatus}
+              error={error}
+              memoryStats={memoryStats}
+            />
+          </div>
+        </ScrollArea>
       </div>
 
       {/* Mobile Menu Button - shown only on mobile */}
@@ -44,17 +84,24 @@ export function PdfSidebarControls({
               <Menu className="h-4 w-4" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-80 p-4">
-            <SheetHeader>
+          <SheetContent side="left" className="w-80 p-0">
+            <SheetHeader className="p-4">
               <SheetTitle>PDF Documents</SheetTitle>
             </SheetHeader>
-            <div className="mt-6 flex flex-col gap-6 h-full">
-              <PdfSidebarContent
-                onFileUpload={onFileUpload}
-                uploadedFiles={uploadedFiles}
-                onRemoveFile={onRemoveFile}
-              />
-            </div>
+            <ScrollArea className="h-[calc(100vh-80px)] p-4">
+              <div className="flex flex-col gap-6">
+                <PdfSidebarContent
+                  onFileUpload={onFileUpload}
+                  uploadedFiles={uploadedFiles}
+                  onRemoveFile={onRemoveFile}
+                  isProcessing={isProcessing}
+                  processingProgress={processingProgress}
+                  embeddingModelStatus={embeddingModelStatus}
+                  error={error}
+                  memoryStats={memoryStats}
+                />
+              </div>
+            </ScrollArea>
           </SheetContent>
         </Sheet>
       </div>

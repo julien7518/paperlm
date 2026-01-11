@@ -9,20 +9,60 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { FileText, FileUp, Trash2 } from "lucide-react";
+import {
+  FileText,
+  FileUp,
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  XCircle,
+} from "lucide-react";
 
 interface PdfSidebarContentProps {
   onFileUpload: (files: File[]) => void;
   uploadedFiles: File[];
   onRemoveFile: (index: number) => void;
+  isProcessing: boolean;
+  processingProgress: {
+    currentFile: string | null;
+    processedFiles: number;
+    totalFiles: number;
+    status: string;
+  };
+  embeddingModelStatus: string;
+  error: string | null;
+  memoryStats: {
+    documentCount: number;
+    chunkCount: number;
+    embeddingCount: number;
+    totalChunkSize: number;
+  };
 }
 
 export function PdfSidebarContent({
   onFileUpload,
   uploadedFiles,
   onRemoveFile,
+  isProcessing = false,
+  processingProgress = {
+    currentFile: null,
+    processedFiles: 0,
+    totalFiles: 0,
+    status: "idle",
+  },
+  embeddingModelStatus = "not_loaded",
+  error = null,
+  memoryStats = {
+    documentCount: 0,
+    chunkCount: 0,
+    embeddingCount: 0,
+    totalChunkSize: 0,
+  },
 }: PdfSidebarContentProps) {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -48,8 +88,35 @@ export function PdfSidebarContent({
 
   return (
     <div className="flex flex-col h-full gap-4">
-      {/* Dropzone Section */}
+      {/* Model Status */}
       <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            {embeddingModelStatus === "ready" ? (
+              <CheckCircle2 className="size-4 text-green-500" />
+            ) : embeddingModelStatus === "loading" ? (
+              <Loader2 className="size-4 text-blue-500 animate-spin" />
+            ) : (
+              <AlertCircle className="size-4 text-red-500" />
+            )}
+            Embedding Model
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              {embeddingModelStatus === "ready"
+                ? "Xenova/all-MiniLM-L6-v2 ready"
+                : embeddingModelStatus === "loading"
+                ? "Loading Xenova model..."
+                : "Model failed to load"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dropzone Section */}
+      <Card className="gap-4">
         <CardHeader>
           <CardTitle className="text-sm">Upload Files</CardTitle>
           <CardDescription className="text-xs">
@@ -80,6 +147,83 @@ export function PdfSidebarContent({
           </div>
         </CardContent>
       </Card>
+
+      {/* Processing Status */}
+      {isProcessing && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+              Processing Documents
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {processingProgress.currentFile || "Starting..."}
+                </p>
+                <p className="text-xs font-mono">
+                  {processingProgress.processedFiles}/
+                  {processingProgress.totalFiles}
+                </p>
+              </div>
+              <Progress
+                value={
+                  (processingProgress.processedFiles /
+                    processingProgress.totalFiles) *
+                  100
+                }
+                className="h-2"
+              />
+              <p className="text-xs text-muted-foreground text-center">
+                {processingProgress.status.replace(/_/g, " ")}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Memory Bank Visualization */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FileText className="h-4 w-4 text-blue-500" />
+            Memory Bank
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Documents</p>
+              <p className="text-xs font-mono">{memoryStats.documentCount}</p>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Chunks</p>
+              <p className="text-xs font-mono">{memoryStats.chunkCount}</p>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Embeddings</p>
+              <p className="text-xs font-mono">{memoryStats.embeddingCount}</p>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Storage</p>
+              <p className="text-xs font-mono">
+                {Math.round(memoryStats.totalChunkSize / 1024)} KB
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle className="text-xs">Processing Error</AlertTitle>
+          <AlertDescription className="text-xs">{error}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Uploaded Files List */}
       <div className="flex-1">
