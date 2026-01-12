@@ -81,6 +81,7 @@ export function ChatInput({
 
         <Button
           disabled={!isModelReady || (isGenerating && !onInterrupt)}
+          variant={isGenerating ? "destructive" : "default"}
           onClick={() => {
             if (isGenerating && onInterrupt) {
               onInterrupt();

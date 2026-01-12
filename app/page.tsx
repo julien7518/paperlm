@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChatContainer } from "@/components/chat/ChatContainer";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { SidebarControls } from "@/components/model-sidebar/SidebarControls";
@@ -43,6 +43,35 @@ If the question cannot be answered reliably with the context, explain why and st
 You are a research assistant. Accuracy and structure matter more than verbosity.`);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // Restore chat history from sessionStorage on initial load (silent restoration)
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const savedMessages = sessionStorage.getItem("chatHistory");
+        if (savedMessages) {
+          const parsedMessages = JSON.parse(savedMessages);
+          if (Array.isArray(parsedMessages)) {
+            setMessages(parsedMessages);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to restore chat history:", error);
+      // Silent error handling - no user notification
+    }
+  }, []);
+
+  // Save chat history to sessionStorage whenever it changes
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && messages.length > 0) {
+        sessionStorage.setItem("chatHistory", JSON.stringify(messages));
+      }
+    } catch (error) {
+      console.error("Failed to save chat history:", error);
+    }
+  }, [messages]);
+
   const {
     model,
     setModel,
@@ -74,8 +103,8 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
   const handleFileUpload = async (files: File[]) => {
     try {
       // Add files to UI immediately
-      setUploadedFiles(prev => [...prev, ...files]);
-      
+      setUploadedFiles((prev) => [...prev, ...files]);
+
       // Process files for chunking and embedding
       await processFiles(files);
     } catch (error) {
@@ -86,7 +115,9 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
   const handleRemoveFile = (index: number) => {
     const file = uploadedFiles[index];
     // Remove from document store
-    const docToRemove = processedDocuments.find(doc => doc.fileName === file.name);
+    const docToRemove = processedDocuments.find(
+      (doc) => doc.fileName === file.name
+    );
     if (docToRemove) {
       removeDocument(docToRemove.fileId);
     }
@@ -112,18 +143,26 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
       }
 
       // Create context from relevant chunks
-      const contextText = relevantChunks.length > 0
-        ? `\n\n--- RELEVANT DOCUMENT CONTEXT ---\n\n${relevantChunks.map((chunk, index) => 
-            `Chunk ${index + 1} (from ${chunk.metadata.fileName}):\n${chunk.content}\n`
-          ).join("\n")}\n\n--- END OF CONTEXT ---\n\n`
-        : "";
+      const contextText =
+        relevantChunks.length > 0
+          ? `\n\n--- RELEVANT DOCUMENT CONTEXT ---\n\n${relevantChunks
+              .map(
+                (chunk, index) =>
+                  `Chunk ${index + 1} (from ${chunk.metadata.fileName}):\n${
+                    chunk.content
+                  }\n`
+              )
+              .join("\n")}\n\n--- END OF CONTEXT ---\n\n`
+          : "";
 
       // Create enhanced system prompt with context
       const enhancedSystemPrompt = `${systemPrompt}
 
 ## Current Context
 - Date and time: ${new Date().toISOString()}
-- Available documents: ${processedDocuments.map(doc => doc.fileName).join(", ") || "None"}
+- Available documents: ${
+        processedDocuments.map((doc) => doc.fileName).join(", ") || "None"
+      }
 - Relevant document context:${contextText}`;
 
       const messagesWithSystem = [
@@ -184,60 +223,72 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
-      {/* PDF Sidebar - Left */}
-      <PdfSidebarControls
-        onFileUpload={handleFileUpload}
-        uploadedFiles={uploadedFiles}
-        onRemoveFile={handleRemoveFile}
-        isProcessing={isProcessing}
-        processingProgress={processingProgress}
-        embeddingModelStatus={embeddingModelStatus}
-        error={error}
-        memoryStats={{
-          documentCount: processedDocuments.length,
-          chunkCount: processedDocuments.reduce((sum, doc) => sum + doc.chunks.length, 0),
-          embeddingCount: processedDocuments.reduce((sum, doc) => sum + (doc.embeddings?.length || 0), 0),
-          totalChunkSize: processedDocuments.reduce((sum, doc) => 
-            sum + doc.chunks.reduce((chunkSum, chunk) => chunkSum + chunk.content.length, 0), 0
-          ),
-        }}
-      />
+        {/* PDF Sidebar - Left */}
+        <PdfSidebarControls
+          onFileUpload={handleFileUpload}
+          uploadedFiles={uploadedFiles}
+          onRemoveFile={handleRemoveFile}
+          isProcessing={isProcessing}
+          processingProgress={processingProgress}
+          embeddingModelStatus={embeddingModelStatus}
+          error={error}
+          memoryStats={{
+            documentCount: processedDocuments.length,
+            chunkCount: processedDocuments.reduce(
+              (sum, doc) => sum + doc.chunks.length,
+              0
+            ),
+            embeddingCount: processedDocuments.reduce(
+              (sum, doc) => sum + (doc.embeddings?.length || 0),
+              0
+            ),
+            totalChunkSize: processedDocuments.reduce(
+              (sum, doc) =>
+                sum +
+                doc.chunks.reduce(
+                  (chunkSum, chunk) => chunkSum + chunk.content.length,
+                  0
+                ),
+              0
+            ),
+          }}
+        />
 
-      {/* Chat - Center */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
-          <ChatContainer
-            messages={messages}
-            onReply={(content) => setReplyTo(content)}
+        {/* Chat - Center */}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
+            <ChatContainer
+              messages={messages}
+              onReply={(content) => setReplyTo(content)}
+            />
+          </div>
+          <ChatInput
+            onSend={handleSend}
+            onInterrupt={interruptGenerate}
+            isModelReady={!isLoadingModel && statusText === "Ready"}
+            isGenerating={isGenerating}
+            replyTo={replyTo}
+            onClearReply={() => setReplyTo(null)}
           />
         </div>
-        <ChatInput
-          onSend={handleSend}
-          onInterrupt={interruptGenerate}
-          isModelReady={!isLoadingModel && statusText === "Ready"}
-          isGenerating={isGenerating}
-          replyTo={replyTo}
-          onClearReply={() => setReplyTo(null)}
+
+        {/* Model Sidebar - Right */}
+        <SidebarControls
+          model={model}
+          onChangeModel={setModel}
+          temperature={temperature}
+          onChangeTemperature={setTemperature}
+          topP={topP}
+          onChangeTopP={setTopP}
+          maxTokens={maxTokens}
+          onChangeMaxTokens={setMaxTokens}
+          status={statusText}
+          onClear={clearMessages}
+          onExport={exportMessages}
+          hasMessages={messages.length > 0}
+          systemPrompt={systemPrompt}
+          onChangeSystemPrompt={setSystemPrompt}
         />
       </div>
-
-      {/* Model Sidebar - Right */}
-      <SidebarControls
-        model={model}
-        onChangeModel={setModel}
-        temperature={temperature}
-        onChangeTemperature={setTemperature}
-        topP={topP}
-        onChangeTopP={setTopP}
-        maxTokens={maxTokens}
-        onChangeMaxTokens={setMaxTokens}
-        status={statusText}
-        onClear={clearMessages}
-        onExport={exportMessages}
-        hasMessages={messages.length > 0}
-        systemPrompt={systemPrompt}
-        onChangeSystemPrompt={setSystemPrompt}
-      />
-    </div>
-  );
+    );
 }

@@ -20,7 +20,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  XCircle,
 } from "lucide-react";
 
 interface PdfSidebarContentProps {
