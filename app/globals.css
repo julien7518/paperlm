@@ -119,4 +119,22 @@
   body {
     @apply bg-background text-foreground;
   }
+  html, body {
+    @apply overflow-hidden;
+  }
+}
+
+/* Custom styles for PDF sidebar file name truncation */
+.file-name-truncate {
+  @apply truncate max-w-full;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-info-truncate {
+  @apply truncate max-w-full;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

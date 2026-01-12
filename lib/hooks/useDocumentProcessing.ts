@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { DocumentProcessor } from "../document-processing/document-processor";
-import { ProcessedDocument } from "../document-processing/types";
+import { DocumentStore } from "../document-processing/document-store";
+import { ProcessedDocument, DocumentChunk } from "../document-processing/types";
 
 export function useDocumentProcessing() {
   const [processor] = useState(() => new DocumentProcessor());
+  const [documentStore] = useState(() => DocumentStore.getInstance());
   const [processedDocuments, setProcessedDocuments] = useState<ProcessedDocument[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState<{
@@ -80,6 +82,8 @@ export function useDocumentProcessing() {
         try {
           const processedDoc = await processor.processDocument(file);
           results.push(processedDoc);
+          // Add document to store
+          documentStore.addDocument(processedDoc);
         } catch (err) {
           console.error(`Failed to process file ${file.name}:`, err);
           setError(`Failed to process file ${file.name}`);
@@ -110,10 +114,25 @@ export function useDocumentProcessing() {
 
   const clearDocuments = () => {
     setProcessedDocuments([]);
+    documentStore.clearAllDocuments();
   };
 
   const removeDocument = (fileId: string) => {
     setProcessedDocuments(prev => prev.filter(doc => doc.fileId !== fileId));
+    documentStore.removeDocument(fileId);
+  };
+
+  const findSimilarChunks = async (query: string, topK: number = 5): Promise<DocumentChunk[]> => {
+    try {
+      // Generate embedding for the query
+      const queryEmbedding = await processor["embeddingService"].generateEmbedding(query);
+      
+      // Find similar chunks
+      return documentStore.findSimilarChunks(queryEmbedding, topK);
+    } catch (err) {
+      console.error("Error finding similar chunks:", err);
+      return [];
+    }
   };
 
   return {
@@ -125,6 +144,7 @@ export function useDocumentProcessing() {
     processFiles,
     clearDocuments,
     removeDocument,
+    findSimilarChunks,
     getAllChunks: () => processor.getAllChunks(processedDocuments),
     getAllEmbeddings: () => processor.getAllEmbeddings(processedDocuments),
   };

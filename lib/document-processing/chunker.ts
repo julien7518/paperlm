@@ -8,10 +8,10 @@ async function loadPdfJs() {
     const pdfjsLib = await import("pdfjs-dist");
     pdfjs = pdfjsLib.default || pdfjsLib;
 
-    // Set up PDF.js worker - using a stable version
+    // Set up PDF.js worker - using version 2.16.105
     if (typeof window !== "undefined") {
       pdfjs.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.149/pdf.min.mjs";
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
     }
   }
   return pdfjs;
@@ -22,8 +22,8 @@ export class DocumentChunker {
 
   constructor(options: Partial<DocumentProcessingOptions> = {}) {
     this.options = {
-      chunkSize: 1000,
-      chunkOverlap: 200,
+      chunkSize: 400,
+      chunkOverlap: 80,
       maxTokensPerChunk: 512,
       ...options,
     };
@@ -64,7 +64,11 @@ export class DocumentChunker {
       // Use the configured worker (should be set in loadPdfJs)
       // If worker causes issues, PDF.js should fall back to synchronous processing
       try {
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        // Create a new Uint8Array from the arrayBuffer to avoid detachment issues
+        const uint8Array = new Uint8Array(arrayBuffer);
+        // For pdfjs 2.x, getDocument returns a promise directly
+        const loadingTask = pdfjsLib.getDocument(uint8Array);
+        const pdf = await loadingTask.promise;
         console.log(`PDF loaded, number of pages: ${pdf.numPages}`);
       } catch (error) {
         console.error("Error loading PDF document:", error);
@@ -79,7 +83,11 @@ export class DocumentChunker {
       let pdf: any = null; // Declare pdf variable outside try block
 
       try {
-        pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        // Create a new Uint8Array from the arrayBuffer to avoid detachment issues
+        const uint8Array = new Uint8Array(arrayBuffer);
+        // For pdfjs 2.x, getDocument returns a promise directly
+        const loadingTask = pdfjsLib.getDocument(uint8Array);
+        pdf = await loadingTask.promise;
         console.log(`PDF loaded, number of pages: ${pdf.numPages}`);
 
         // Restore original worker setting

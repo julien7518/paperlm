@@ -159,11 +159,14 @@ export function PdfSidebarContent({
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
+              <div className="flex items-center justify-between min-w-0">
+                <p
+                  className="text-xs text-muted-foreground file-name-truncate flex-1 min-w-0"
+                  title={processingProgress.currentFile || "Starting..."}
+                >
                   {processingProgress.currentFile || "Starting..."}
                 </p>
-                <p className="text-xs font-mono">
+                <p className="text-xs font-mono flex-shrink-0 ml-2">
                   {processingProgress.processedFiles}/
                   {processingProgress.totalFiles}
                 </p>
@@ -247,11 +250,16 @@ export function PdfSidebarContent({
                       key={index}
                       className="flex items-center justify-between gap-2 p-2 border rounded-lg"
                     >
-                      <div className="flex items-center truncate gap-2 flex-1">
-                        <FileText className="size-4 text-muted-foreground" />
-                        <div className="text-xs truncate">
-                          <p className="font-medium">{file.name}</p>
-                          <p className="text-muted-foreground">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <FileText className="size-4 text-muted-foreground flex-shrink-0" />
+                        <div className="text-xs flex-1 min-w-0">
+                          <p
+                            className="font-medium file-name-truncate"
+                            title={file.name}
+                          >
+                            {file.name}
+                          </p>
+                          <p className="text-muted-foreground file-info-truncate">
                             {file.type} - {(file.size / 1024).toFixed(2)} KB
                           </p>
                         </div>

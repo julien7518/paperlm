@@ -7,6 +7,7 @@ import { SidebarControls } from "@/components/model-sidebar/SidebarControls";
 import { PdfSidebarControls } from "@/components/pdf-sidebar/PdfSidebarControls";
 import { useWebLLM } from "@/lib/hooks/useWebLLM";
 import { useDocumentProcessing } from "@/lib/hooks/useDocumentProcessing";
+import { DocumentChunk } from "@/lib/document-processing/types";
 
 export default function Home() {
   const [messages, setMessages] = useState<
@@ -40,6 +41,7 @@ export default function Home() {
 If the question cannot be answered reliably with the context, explain why and state what is missing.
 
 You are a research assistant. Accuracy and structure matter more than verbosity.`);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const {
     model,
@@ -53,6 +55,7 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
     maxTokens,
     setMaxTokens,
     generate,
+    interruptGenerate,
   } = useWebLLM();
 
   // Document processing
@@ -65,6 +68,7 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
     processFiles,
     clearDocuments,
     removeDocument,
+    findSimilarChunks,
   } = useDocumentProcessing();
 
   const handleFileUpload = async (files: File[]) => {
@@ -98,10 +102,32 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
 
     // Start assistant response (empty)
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    setIsGenerating(true);
 
     try {
+      // Find relevant document chunks based on the user's query
+      let relevantChunks: DocumentChunk[] = [];
+      if (processedDocuments.length > 0 && embeddingModelStatus === "ready") {
+        relevantChunks = await findSimilarChunks(msg, 5);
+      }
+
+      // Create context from relevant chunks
+      const contextText = relevantChunks.length > 0
+        ? `\n\n--- RELEVANT DOCUMENT CONTEXT ---\n\n${relevantChunks.map((chunk, index) => 
+            `Chunk ${index + 1} (from ${chunk.metadata.fileName}):\n${chunk.content}\n`
+          ).join("\n")}\n\n--- END OF CONTEXT ---\n\n`
+        : "";
+
+      // Create enhanced system prompt with context
+      const enhancedSystemPrompt = `${systemPrompt}
+
+## Current Context
+- Date and time: ${new Date().toISOString()}
+- Available documents: ${processedDocuments.map(doc => doc.fileName).join(", ") || "None"}
+- Relevant document context:${contextText}`;
+
       const messagesWithSystem = [
-        { role: "system" as const, content: systemPrompt },
+        { role: "system" as const, content: enhancedSystemPrompt },
         ...messages,
         { role: "user" as const, content: msg },
       ];
@@ -124,6 +150,8 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error("Generation error:", errMsg);
       // Keep the partial response that was already added
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -177,13 +205,17 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
 
       {/* Chat - Center */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        <ChatContainer
-          messages={messages}
-          onReply={(content) => setReplyTo(content)}
-        />
+        <div className="flex-1 overflow-y-auto">
+          <ChatContainer
+            messages={messages}
+            onReply={(content) => setReplyTo(content)}
+          />
+        </div>
         <ChatInput
           onSend={handleSend}
+          onInterrupt={interruptGenerate}
           isModelReady={!isLoadingModel && statusText === "Ready"}
+          isGenerating={isGenerating}
           replyTo={replyTo}
           onClearReply={() => setReplyTo(null)}
         />

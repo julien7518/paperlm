@@ -150,7 +150,7 @@ export function ChatMessage({
     }
   };
   return (
-    <div className="w-full max-w-2xl mx-auto mb-3">
+    <div className="w-full mx-auto mb-3 max-w-full">
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0">
           <Avatar className="h-6 w-6 flex-shrink-0 mt-3">
@@ -165,10 +165,10 @@ export function ChatMessage({
             </AvatarFallback>
           </Avatar>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div
             className={cn(
-              "px-4 py-3 rounded-lg",
+              "px-4 py-3 rounded-lg overflow-x-hidden",
               role === "user"
                 ? "bg-primary/10 border border-primary/20"
                 : "bg-muted border border-border"
@@ -176,7 +176,7 @@ export function ChatMessage({
           >
             <div
               className={`
-                max-w-none text-sm space-y-2
+                max-w-none text-sm space-y-2 overflow-x-hidden
 
                 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2
                 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-2

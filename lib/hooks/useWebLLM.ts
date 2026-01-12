@@ -62,6 +62,12 @@ export function useWebLLM() {
     return completion;
   };
 
+  const interruptGenerate = () => {
+    if (engineRef.current) {
+      engineRef.current.interruptGenerate();
+    }
+  };
+
   return {
     model,
     setModel,
@@ -74,5 +80,6 @@ export function useWebLLM() {
     isLoadingModel,
     statusText,
     generate,
+    interruptGenerate,
   };
 }
