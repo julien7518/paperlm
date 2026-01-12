@@ -5,13 +5,23 @@ let pdfjs: any = null;
 
 async function loadPdfJs() {
   if (!pdfjs) {
+    console.log("Loading PDF.js library...");
     const pdfjsLib = await import("pdfjs-dist");
-    pdfjs = pdfjsLib.default || pdfjsLib;
+    pdfjs = pdfjsLib.default || pdfjs;
 
     // Set up PDF.js worker - using version 2.16.105
     if (typeof window !== "undefined") {
-      pdfjs.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+      console.log("Setting up PDF.js worker");
+      try {
+        pdfjs.GlobalWorkerOptions.workerSrc =
+          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+        console.log("PDF.js worker configured successfully");
+      } catch (error) {
+        console.error("Failed to configure PDF.js worker:", error);
+        // Continue without worker - will be slower but should work
+      }
+    } else {
+      console.warn("PDF.js worker setup skipped: not in browser environment");
     }
   }
   return pdfjs;
@@ -34,95 +44,69 @@ export class DocumentChunker {
     return `${cleanFileName}_chunk_${chunkIndex}_${Date.now()}`;
   }
 
-  private async extractTextFromPdf(file: File): Promise<string> {
+  async extractTextFromPdf(file: File): Promise<string> {
     try {
+      console.log(
+        `Starting PDF extraction for ${file.name}, size: ${file.size} bytes, type: ${file.type}`
+      );
+
       // Ensure we're in a browser environment
       if (typeof window === "undefined") {
+        console.error("PDF extraction attempted in non-browser environment");
         throw new Error(
           "PDF extraction can only be performed in a browser environment"
         );
       }
 
+      console.log("Loading PDF.js library...");
       // Load pdfjs dynamically to avoid server-side issues
-      console.log(`Loading PDF.js library...`);
       const pdfjsLib = await loadPdfJs();
-      console.log(`PDF.js library loaded successfully`);
+      console.log("PDF.js loaded successfully");
 
-      console.log(`Converting file to array buffer...`);
+      console.log("Reading file as array buffer...");
       const arrayBuffer = await file.arrayBuffer();
       console.log(
         `Array buffer created, size: ${arrayBuffer.byteLength} bytes`
       );
 
-      console.log(`Loading PDF document...`);
-      console.log(`Worker src: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+      // Create a new Uint8Array from the arrayBuffer to avoid detachment issues
+      const uint8Array = new Uint8Array(arrayBuffer);
+      console.log(`Uint8Array created, length: ${uint8Array.length}`);
 
-      // Try disabling worker explicitly to force synchronous processing
-      const originalWorkerSrc = pdfjsLib.GlobalWorkerOptions.workerSrc;
-      console.log(`Worker src: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
-
-      // Use the configured worker (should be set in loadPdfJs)
-      // If worker causes issues, PDF.js should fall back to synchronous processing
-      try {
-        // Create a new Uint8Array from the arrayBuffer to avoid detachment issues
-        const uint8Array = new Uint8Array(arrayBuffer);
-        // For pdfjs 2.x, getDocument returns a promise directly
-        const loadingTask = pdfjsLib.getDocument(uint8Array);
-        const pdf = await loadingTask.promise;
-        console.log(`PDF loaded, number of pages: ${pdf.numPages}`);
-      } catch (error) {
-        console.error("Error loading PDF document:", error);
-        throw new Error(
-          `Failed to load PDF document: ${
-            error instanceof Error ? error.message : String(error)
-          }`
-        );
-      }
+      // For pdfjs 2.x, getDocument returns a promise directly
+      console.log("Loading PDF document...");
+      const loadingTask = pdfjsLib.getDocument(uint8Array);
+      const pdf = await loadingTask.promise;
+      console.log(`PDF loaded successfully, ${pdf.numPages} pages`);
 
       let fullText = "";
-      let pdf: any = null; // Declare pdf variable outside try block
-
-      try {
-        // Create a new Uint8Array from the arrayBuffer to avoid detachment issues
-        const uint8Array = new Uint8Array(arrayBuffer);
-        // For pdfjs 2.x, getDocument returns a promise directly
-        const loadingTask = pdfjsLib.getDocument(uint8Array);
-        pdf = await loadingTask.promise;
-        console.log(`PDF loaded, number of pages: ${pdf.numPages}`);
-
-        // Restore original worker setting
-        pdfjsLib.GlobalWorkerOptions.workerSrc = originalWorkerSrc;
-      } catch (error) {
-        // Restore original worker setting even if loading fails
-        pdfjsLib.GlobalWorkerOptions.workerSrc = originalWorkerSrc;
-        console.error("Error loading PDF document:", error);
-        throw new Error(
-          `Failed to load PDF document: ${
-            error instanceof Error ? error.message : String(error)
-          }`
-        );
-      }
 
       for (let i = 1; i <= pdf.numPages; i++) {
-        console.log(`Processing page ${i}/${pdf.numPages}...`);
+        console.log(`Processing page ${i}/${pdf.numPages}`);
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items
           .map((item: { str: string }) => item.str)
           .join(" ");
         fullText += pageText + "\n\n";
-        console.log(
-          `Page ${i} processed, extracted ${pageText.length} characters`
-        );
+        console.log(`Page ${i} extracted, ${pageText.length} characters`);
+        await new Promise((resolve) => setTimeout(resolve, 0));
       }
 
       console.log(
-        `PDF processing completed, total characters: ${fullText.length}`
+        `PDF extraction completed, total ${fullText.length} characters extracted`
       );
       return fullText;
     } catch (error) {
-      console.error("Error extracting text from PDF:", error);
-      throw new Error("Failed to extract text from PDF");
+      console.error("Detailed PDF extraction error:", error);
+      if (error instanceof Error) {
+        console.error("Error stack:", error.stack);
+      }
+      throw new Error(
+        `Failed to extract text from PDF: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 
@@ -172,9 +156,16 @@ export class DocumentChunker {
         }
 
         // Start new chunk with overlap
-        const overlapStart = Math.max(0, i - this.options.chunkOverlap);
-        currentChunk = words.slice(overlapStart, i + 1);
+        const overlapWordCount = Math.min(
+          this.options.chunkOverlap,
+          currentChunk.length
+        );
+        currentChunk = currentChunk.slice(
+          currentChunk.length - overlapWordCount
+        );
         currentChunkWordCount = currentChunk.join(" ").length;
+        currentChunk.push(word);
+        currentChunkWordCount += word.length + 1;
       }
     }
 
@@ -207,19 +198,14 @@ export class DocumentChunker {
 
   async chunkDocument(file: File): Promise<DocumentChunk[]> {
     try {
-      console.log(`Processing file: ${file.name} (${file.type})`);
-
       // Extract text from file
       const text = await this.extractTextFromFile(file);
 
       // Split text into chunks
       const chunks = this.splitTextIntoChunks(text, file.name, file);
 
-      console.log(`Created ${chunks.length} chunks from ${file.name}`);
-
       return chunks;
     } catch (error) {
-      console.error(`Error processing file ${file.name}:`, error);
       throw error;
     }
   }
@@ -232,9 +218,9 @@ export class DocumentChunker {
         const chunks = await this.chunkDocument(file);
         allChunks.push(...chunks);
       } catch (error) {
-        console.error(`Skipping file ${file.name} due to error:`, error);
         // Continue with other files
       }
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
 
     return allChunks;

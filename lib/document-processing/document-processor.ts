@@ -14,12 +14,14 @@ export class DocumentProcessor {
   async processDocument(file: File): Promise<ProcessedDocument> {
     try {
       console.log(`Starting processing of ${file.name}`);
+      console.log(`Processing ${file.name} on main thread`);
 
       // Step 1: Chunk the document
       const chunks = await this.chunker.chunkDocument(file);
 
       // Step 2: Generate embeddings for chunks
-      const embeddings = await this.embeddingService.generateEmbeddingsForChunks(chunks);
+      const embeddings =
+        await this.embeddingService.generateEmbeddingsForChunks(chunks);
 
       // Create processed document
       const processedDocument: ProcessedDocument = {
@@ -31,7 +33,9 @@ export class DocumentProcessor {
         processingDate: new Date().toISOString(),
       };
 
-      console.log(`Successfully processed ${file.name}: ${chunks.length} chunks, ${embeddings.length} embeddings`);
+      console.log(
+        `Successfully processed ${file.name}: ${chunks.length} chunks, ${embeddings.length} embeddings`
+      );
 
       return processedDocument;
     } catch (error) {
@@ -48,7 +52,10 @@ export class DocumentProcessor {
         const processedDoc = await this.processDocument(file);
         results.push(processedDoc);
       } catch (error) {
-        console.error(`Skipping file ${file.name} due to processing error:`, error);
+        console.error(
+          `Skipping file ${file.name} due to processing error:`,
+          error
+        );
         // Continue with other files
       }
     }
@@ -58,11 +65,13 @@ export class DocumentProcessor {
 
   async loadEmbeddingModel(): Promise<void> {
     // Ensure we're in a browser environment
-    if (typeof window === 'undefined') {
-      console.warn("Embedding model loading skipped: not in browser environment");
+    if (typeof window === "undefined") {
+      console.warn(
+        "Embedding model loading skipped: not in browser environment"
+      );
       return;
     }
-    
+
     await this.embeddingService.loadModel();
   }
 
@@ -81,11 +90,11 @@ export class DocumentProcessor {
 
   // Utility method to get chunks from processed documents
   getAllChunks(documents: ProcessedDocument[]): DocumentChunk[] {
-    return documents.flatMap(doc => doc.chunks);
+    return documents.flatMap((doc) => doc.chunks);
   }
 
   // Utility method to get all embeddings from processed documents
   getAllEmbeddings(documents: ProcessedDocument[]): EmbeddingResult[] {
-    return documents.flatMap(doc => doc.embeddings || []);
+    return documents.flatMap((doc) => doc.embeddings || []);
   }
 }

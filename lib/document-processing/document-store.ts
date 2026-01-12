@@ -120,20 +120,22 @@ export class DocumentStore {
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {
-    // Ensure vectors are the same length
-    if (a.length !== b.length) {
-      throw new Error("Vectors must be the same length for cosine similarity");
-    }
+    // Handle vectors of different lengths by padding the shorter one with zeros
+    const maxLength = Math.max(a.length, b.length);
+    
+    // Pad vectors if necessary
+    const paddedA = a.length < maxLength ? [...a, ...new Array(maxLength - a.length).fill(0)] : a;
+    const paddedB = b.length < maxLength ? [...b, ...new Array(maxLength - b.length).fill(0)] : b;
 
     // Calculate dot product
     let dotProduct = 0;
     let normA = 0;
     let normB = 0;
 
-    for (let i = 0; i < a.length; i++) {
-      dotProduct += a[i] * b[i];
-      normA += a[i] * a[i];
-      normB += b[i] * b[i];
+    for (let i = 0; i < maxLength; i++) {
+      dotProduct += paddedA[i] * paddedB[i];
+      normA += paddedA[i] * paddedA[i];
+      normB += paddedB[i] * paddedB[i];
     }
 
     // Calculate magnitudes
