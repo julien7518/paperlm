@@ -30,6 +30,8 @@ async function loadPdfJs() {
 export class DocumentChunker {
   private options: DocumentProcessingOptions;
 
+  private progressCallback: ((progress: number, status: string) => void) | null = null;
+
   constructor(options: Partial<DocumentProcessingOptions> = {}) {
     this.options = {
       chunkSize: 400,
@@ -37,6 +39,10 @@ export class DocumentChunker {
       maxTokensPerChunk: 512,
       ...options,
     };
+  }
+
+  setProgressCallback(callback: (progress: number, status: string) => void): void {
+    this.progressCallback = callback;
   }
 
   private generateChunkId(fileName: string, chunkIndex: number): string {
@@ -125,73 +131,57 @@ export class DocumentChunker {
     fileName: string,
     file: File
   ): DocumentChunk[] {
-    const words = text.split(/\s+/);
     const chunks: DocumentChunk[] = [];
-    let currentChunk: string[] = [];
-    let currentChunkWordCount = 0;
+    let start = 0;
+    const chunkSize = this.options.chunkSize;
+    const overlap = this.options.chunkOverlap;
 
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
+    while (start < text.length) {
+      const end = start + chunkSize;
+      let chunk = text.slice(start, end);
 
-      if (currentChunkWordCount + word.length <= this.options.chunkSize) {
-        currentChunk.push(word);
-        currentChunkWordCount += word.length + 1; // +1 for space
-      } else {
-        // Add current chunk to chunks
-        if (currentChunk.length > 0) {
-          const chunkId = this.generateChunkId(fileName, chunks.length);
-          chunks.push({
-            id: chunkId,
-            content: currentChunk.join(" "),
-            source: fileName,
-            chunkIndex: chunks.length,
-            totalChunks: 0, // Will be updated later
-            metadata: {
-              fileName,
-              fileType: file.type,
-              fileSize: file.size,
-              uploadDate: new Date().toISOString(),
-            },
-          });
+      // Intelligent chunking - try to find sentence boundaries
+      if (end < text.length) {
+        const lastPeriod = chunk.lastIndexOf(".");
+        if (lastPeriod > -1 && lastPeriod > chunkSize * 0.5) {
+          chunk = chunk.slice(0, lastPeriod + 1);
+          start += lastPeriod + 1 - overlap;
+        } else {
+          const lastSpace = chunk.lastIndexOf(" ");
+          if (lastSpace > -1) {
+            chunk = chunk.slice(0, lastSpace);
+            start += lastSpace - overlap;
+          } else {
+            start += chunkSize - overlap;
+          }
         }
-
-        // Start new chunk with overlap
-        const overlapWordCount = Math.min(
-          this.options.chunkOverlap,
-          currentChunk.length
-        );
-        currentChunk = currentChunk.slice(
-          currentChunk.length - overlapWordCount
-        );
-        currentChunkWordCount = currentChunk.join(" ").length;
-        currentChunk.push(word);
-        currentChunkWordCount += word.length + 1;
+      } else {
+        start += chunkSize;
       }
-    }
 
-    // Add the last chunk
-    if (currentChunk.length > 0) {
+      // Create chunk with proper metadata
       const chunkId = this.generateChunkId(fileName, chunks.length);
-      chunks.push({
+      const chunkObj: DocumentChunk = {
         id: chunkId,
-        content: currentChunk.join(" "),
+        content: chunk.trim(),
         source: fileName,
         chunkIndex: chunks.length,
-        totalChunks: 0, // Will be updated later
+        totalChunks: 0,
         metadata: {
           fileName,
           fileType: file.type,
           fileSize: file.size,
           uploadDate: new Date().toISOString(),
         },
-      });
+      };
+
+      chunks.push(chunkObj);
     }
 
-    // Update totalChunks for all chunks
-    const totalChunks = chunks.length;
+    // Update total chunks count
     return chunks.map((chunk, index) => ({
       ...chunk,
-      totalChunks,
+      totalChunks: chunks.length,
       chunkIndex: index,
     }));
   }
@@ -213,16 +203,70 @@ export class DocumentChunker {
   async chunkMultipleDocuments(files: File[]): Promise<DocumentChunk[]> {
     const allChunks: DocumentChunk[] = [];
 
-    for (const file of files) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       try {
+        if (this.progressCallback) {
+          const progress = Math.round(((i + 1) / files.length) * 100);
+          this.progressCallback(progress, `Processing file ${i + 1}/${files.length}: ${file.name}`);
+        }
+
         const chunks = await this.chunkDocument(file);
         allChunks.push(...chunks);
+
+        if (this.progressCallback) {
+          this.progressCallback(
+            Math.round(((i + 1) / files.length) * 100),
+            `Completed ${file.name} - ${chunks.length} chunks created`
+          );
+        }
       } catch (error) {
+        console.error(`Failed to process file ${file.name}:`, error);
+        if (this.progressCallback) {
+          this.progressCallback(
+            Math.round(((i + 1) / files.length) * 100),
+            `Error processing ${file.name}: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
         // Continue with other files
       }
+
+      // Adaptive yield to event loop
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
 
+    if (this.progressCallback) {
+      this.progressCallback(100, `Chunking complete - ${allChunks.length} total chunks`);
+    }
+
     return allChunks;
+  }
+
+  // Utility method to get chunking statistics
+  getChunkingStats(chunks: DocumentChunk[]): {
+    totalChunks: number;
+    avgChunkSize: number;
+    minChunkSize: number;
+    maxChunkSize: number;
+    totalCharacters: number;
+  } {
+    if (chunks.length === 0) {
+      return {
+        totalChunks: 0,
+        avgChunkSize: 0,
+        minChunkSize: 0,
+        maxChunkSize: 0,
+        totalCharacters: 0,
+      };
+    }
+
+    const chunkSizes = chunks.map(chunk => chunk.content.length);
+    return {
+      totalChunks: chunks.length,
+      avgChunkSize: chunkSizes.reduce((sum, size) => sum + size, 0) / chunks.length,
+      minChunkSize: Math.min(...chunkSizes),
+      maxChunkSize: Math.max(...chunkSizes),
+      totalCharacters: chunkSizes.reduce((sum, size) => sum + size, 0),
+    };
   }
 }

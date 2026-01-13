@@ -7,9 +7,14 @@ export class EmbeddingService {
   private pipe: any;
   private isLoading: boolean = false;
   private isReady: boolean = false;
+  private progressCallback: ((progress: number, status: string) => void) | null = null;
 
   constructor() {
     this.pipe = null;
+  }
+
+  setProgressCallback(callback: (progress: number, status: string) => void): void {
+    this.progressCallback = callback;
   }
 
   async loadModel(): Promise<void> {
@@ -183,28 +188,63 @@ export class EmbeddingService {
       await this.loadModel();
     }
 
-    const BATCH_SIZE = 8; // safe default for browser CPU/WASM
+    // Dynamic batch size based on average chunk size
+    const avgChunkSize = chunks.reduce((sum, chunk) => sum + chunk.content.length, 0) / chunks.length;
+    const BATCH_SIZE = Math.max(4, Math.min(16, Math.floor(1000 / (avgChunkSize / 100))));
+
     const results: EmbeddingResult[] = [];
 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
 
-      const embeddings = await Promise.all(
-        batch.map(async (chunk) => {
-          const embedding = await this.generateEmbedding(chunk.content);
-          return {
-            chunkId: chunk.id,
-            embedding,
-            content: chunk.content,
-            metadata: chunk.metadata,
-          } as EmbeddingResult;
-        })
-      );
+      try {
+        if (this.progressCallback) {
+          const progress = Math.round(((i + batch.length) / chunks.length) * 100);
+          this.progressCallback(progress, `Embedding batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(chunks.length/BATCH_SIZE)}`);
+        }
 
-      results.push(...embeddings);
+        const embeddings = await Promise.all(
+          batch.map(async (chunk) => {
+            try {
+              const embedding = await this.generateEmbedding(chunk.content);
+              return {
+                chunkId: chunk.id,
+                embedding,
+                content: chunk.content,
+                metadata: chunk.metadata,
+              } as EmbeddingResult;
+            } catch (chunkError) {
+              console.error(`Failed to embed chunk ${chunk.id}:`, chunkError);
+              return null;
+            }
+          })
+        );
 
-      // Yield to the event loop to keep UI responsive
-      await new Promise((resolve) => setTimeout(resolve, 0));
+        // Filter out failed embeddings
+        const successfulEmbeddings = embeddings.filter(e => e !== null) as EmbeddingResult[];
+        results.push(...successfulEmbeddings);
+
+        if (this.progressCallback) {
+          const progress = Math.round(((i + batch.length) / chunks.length) * 100);
+          this.progressCallback(progress, `Completed batch - ${successfulEmbeddings.length}/${batch.length} successful`);
+        }
+
+      } catch (batchError) {
+        console.error(`Failed to process batch ${i}-${i+BATCH_SIZE}:`, batchError);
+        if (this.progressCallback) {
+          const progress = Math.round(((i + batch.length) / chunks.length) * 100);
+          this.progressCallback(progress, `Batch error: ${batchError instanceof Error ? batchError.message : String(batchError)}`);
+        }
+        // Continue with next batch
+      }
+
+      // Adaptive yield to event loop based on batch size
+      const yieldTime = Math.min(10, Math.max(0, batch.length * 2));
+      await new Promise((resolve) => setTimeout(resolve, yieldTime));
+    }
+
+    if (this.progressCallback) {
+      this.progressCallback(100, `Embedding complete - ${results.length}/${chunks.length} chunks processed`);
     }
 
     return results;
