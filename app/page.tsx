@@ -103,6 +103,7 @@ You are a research assistant. Accuracy and structure matter more than verbosity.
     clearDocuments,
     removeDocument,
     findSimilarChunks,
+
   } = useDocumentProcessing();
 
   const handleFileUpload = async (files: File[]) => {
@@ -414,6 +415,7 @@ ${chunk.content}
             0
           ),
         }}
+
       />
 
       {/* Chat - Center */}

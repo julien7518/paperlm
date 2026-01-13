@@ -21,6 +21,7 @@ export function useDocumentProcessing() {
     totalFiles: 0,
     status: "idle",
   });
+  const [fileQueue, setFileQueue] = useState<File[]>([]);
   const [embeddingModelStatus, setEmbeddingModelStatus] = useState("not_loaded");
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +57,18 @@ export function useDocumentProcessing() {
   }, [processor]);
 
   const processFiles = async (files: File[]) => {
+    // Add files to queue if already processing
+    if (isProcessing) {
+      setFileQueue(prevQueue => [...prevQueue, ...files]);
+      // Update total files count to include queued files
+      setProcessingProgress(prev => ({
+        ...prev,
+        totalFiles: prev.totalFiles + files.length,
+        status: `processing_${prev.processedFiles + 1}_of_${prev.totalFiles + files.length}`,
+      }));
+      return []; // Return empty array since these will be processed later
+    }
+
     try {
       setIsProcessing(true);
       setError(null);
@@ -72,11 +85,11 @@ export function useDocumentProcessing() {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         
+        // Set current file being processed (but don't increment processedFiles yet)
         setProcessingProgress(prev => ({
           ...prev,
           currentFile: file.name,
-          processedFiles: i,
-          status: `processing_${i + 1}_of_${files.length}`,
+          status: `processing_${prev.processedFiles + 1}_of_${prev.totalFiles}`,
         }));
 
         try {
@@ -84,10 +97,16 @@ export function useDocumentProcessing() {
           results.push(processedDoc);
           // Add document to store
           documentStore.addDocument(processedDoc);
+          
+          // Only increment processedFiles after successful processing
+          setProcessingProgress(prev => ({
+            ...prev,
+            processedFiles: prev.processedFiles + 1,
+          }));
         } catch (err) {
           console.error(`Failed to process file ${file.name}:`, err);
           setError(`Failed to process file ${file.name}`);
-          // Continue with other files
+          // Continue with other files (don't increment processedFiles on error)
         }
       }
 
@@ -109,6 +128,20 @@ export function useDocumentProcessing() {
       throw err;
     } finally {
       setIsProcessing(false);
+      // Process next batch in queue if exists
+      if (fileQueue.length > 0) {
+        const nextBatch = fileQueue;
+        setFileQueue([]); // Clear queue
+        processFiles(nextBatch); // Process next batch
+      } else {
+        // Reset progress when queue is empty
+        setProcessingProgress({
+          currentFile: null,
+          processedFiles: 0,
+          totalFiles: 0,
+          status: "idle",
+        });
+      }
     }
   };
 
@@ -145,6 +178,7 @@ export function useDocumentProcessing() {
     clearDocuments,
     removeDocument,
     findSimilarChunks,
+
     getAllChunks: () => processor.getAllChunks(processedDocuments),
     getAllEmbeddings: () => processor.getAllEmbeddings(processedDocuments),
   };

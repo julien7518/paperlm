@@ -32,6 +32,7 @@ interface PdfSidebarProps {
     embeddingCount: number;
     totalChunkSize: number;
   };
+
 }
 
 export function PdfSidebarControls({
@@ -53,6 +54,7 @@ export function PdfSidebarControls({
     embeddingCount: 0,
     totalChunkSize: 0,
   },
+
 }: PdfSidebarProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
