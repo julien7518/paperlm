@@ -1,18 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, X } from "lucide-react";
+import { Send, X, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 export function ChatInput({
   onSend,
+  onInterrupt,
   isModelReady = true,
+  isGenerating = false,
   replyTo,
   onClearReply,
 }: {
   onSend: (msg: string) => void;
+  onInterrupt?: () => void;
   isModelReady?: boolean;
+  isGenerating?: boolean;
   replyTo?: string | null;
   onClearReply?: () => void;
 }) {
@@ -59,9 +63,11 @@ export function ChatInput({
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 if (!isModelReady || value.trim() === "") return;
-                onSend(value);
-                setValue("");
-                onClearReply?.();
+                if (!isGenerating) {
+                  onSend(value);
+                  setValue("");
+                  onClearReply?.();
+                }
               }
             }}
             placeholder={
@@ -74,15 +80,20 @@ export function ChatInput({
         </div>
 
         <Button
-          disabled={!isModelReady}
+          disabled={!isModelReady || (isGenerating && !onInterrupt)}
+          variant={isGenerating ? "destructive" : "default"}
           onClick={() => {
-            if (value.trim() === "") return;
-            onSend(value);
-            setValue("");
-            onClearReply?.();
+            if (isGenerating && onInterrupt) {
+              onInterrupt();
+            } else {
+              if (value.trim() === "") return;
+              onSend(value);
+              setValue("");
+              onClearReply?.();
+            }
           }}
         >
-          <Send />
+          {isGenerating ? <Square /> : <Send />}
         </Button>
       </div>
     </div>

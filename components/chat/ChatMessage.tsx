@@ -3,7 +3,15 @@
 import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, CornerUpLeft } from "lucide-react";
+import {
+  Copy,
+  Check,
+  CornerUpLeft,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import { CitationBadge } from "./CitationBadge";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { toast } from "sonner";
 
@@ -47,6 +55,7 @@ interface ChatMessageProps {
   content: string;
   isStreaming?: boolean;
   onReply?: (content: string) => void;
+  citations?: Array<{ source: string; chunkId: string; content?: string }>;
 }
 
 export function ChatMessage({
@@ -54,6 +63,7 @@ export function ChatMessage({
   content,
   isStreaming,
   onReply,
+  citations,
 }: ChatMessageProps) {
   const [copied, setCopied] = useState(false);
 
@@ -150,7 +160,7 @@ export function ChatMessage({
     }
   };
   return (
-    <div className="w-full max-w-2xl mx-auto mb-3">
+    <div className="w-full mx-auto mb-3 max-w-full">
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0">
           <Avatar className="h-6 w-6 flex-shrink-0 mt-3">
@@ -165,10 +175,10 @@ export function ChatMessage({
             </AvatarFallback>
           </Avatar>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div
             className={cn(
-              "px-4 py-3 rounded-lg",
+              "px-4 py-3 rounded-lg overflow-x-hidden",
               role === "user"
                 ? "bg-primary/10 border border-primary/20"
                 : "bg-muted border border-border"
@@ -176,7 +186,7 @@ export function ChatMessage({
           >
             <div
               className={`
-                max-w-none text-sm space-y-2
+                max-w-none text-sm space-y-2 overflow-x-hidden
 
                 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2
                 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-2
@@ -213,6 +223,24 @@ export function ChatMessage({
             {isStreaming && (
               <div className="mt-2 text-xs opacity-70 flex items-center gap-2">
                 <span className="animate-pulse">●</span> Thinking…
+              </div>
+            )}
+
+            {citations && citations.length > 0 && role === "assistant" && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <div className="text-xs font-medium text-blue-600 mb-2 flex items-center gap-1">
+                  <BookOpen className="h-3 w-3" />
+                  <span>SOURCES CITED ({citations.length}):</span>
+                </div>
+                <div className="space-y-2">
+                  {citations.map((citation, index) => (
+                    <CitationBadge
+                      key={index}
+                      citation={citation}
+                      index={index}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </div>

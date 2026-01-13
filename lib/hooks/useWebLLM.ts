@@ -6,7 +6,7 @@ import { CreateMLCEngine, MLCEngine } from "@mlc-ai/web-llm";
 type Role = "user" | "assistant" | "system";
 
 export function useWebLLM() {
-  const [model, setModel] = useState("Llama-3.2-3B-Instruct-q4f16_1-MLC");
+  const [model, setModel] = useState("Llama-3.2-1B-Instruct-q0f16-MLC");
   const [temperature, setTemperature] = useState(0.7);
   const [topP, setTopP] = useState(0.9);
   const [maxTokens, setMaxTokens] = useState(512);
@@ -62,6 +62,12 @@ export function useWebLLM() {
     return completion;
   };
 
+  const interruptGenerate = () => {
+    if (engineRef.current) {
+      engineRef.current.interruptGenerate();
+    }
+  };
+
   return {
     model,
     setModel,
@@ -74,5 +80,6 @@ export function useWebLLM() {
     isLoadingModel,
     statusText,
     generate,
+    interruptGenerate,
   };
 }
