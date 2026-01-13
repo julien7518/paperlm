@@ -22,6 +22,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { CollapsibleStatusCard } from "./CollapsibleStatusCard";
+import { truncateFilename } from "@/lib/utils";
 
 interface PdfSidebarContentProps {
   onFileUpload: (files: File[]) => void;
@@ -143,7 +144,7 @@ export function PdfSidebarContent({
                   className="text-xs text-muted-foreground file-name-truncate flex-1 min-w-0"
                   title={processingProgress.currentFile || "Starting..."}
                 >
-                  {processingProgress.currentFile || "Starting..."}
+                  {processingProgress.currentFile ? truncateFilename(processingProgress.currentFile, 30) : "Starting..."}
                 </p>
                 <p className="text-xs font-mono flex-shrink-0 ml-2">
                   {processingProgress.processedFiles}/
@@ -195,16 +196,16 @@ export function PdfSidebarContent({
                   {uploadedFiles.map((file, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between gap-2 p-2 border rounded-lg"
+                      className="pdf-sidebar-file-item"
                     >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className="pdf-sidebar-file-content">
                         <FileText className="size-4 text-muted-foreground flex-shrink-0" />
-                        <div className="text-xs flex-1 min-w-0">
+                        <div className="pdf-sidebar-file-text text-xs">
                           <p
                             className="font-medium file-name-truncate"
                             title={file.name}
                           >
-                            {file.name}
+                            {truncateFilename(file.name, 25)}
                           </p>
                           <p className="text-muted-foreground file-info-truncate">
                             {file.type} - {(file.size / 1024).toFixed(2)} KB
@@ -214,7 +215,7 @@ export function PdfSidebarContent({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
+                        className="h-6 w-6 flex-shrink-0"
                         onClick={() => onRemoveFile(index)}
                       >
                         <Trash2 className="h-3 w-3" />

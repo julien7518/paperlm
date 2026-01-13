@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Truncation</title>
+    <style>
+        .file-name-truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: block;
+            max-width: 200px;
+            border: 1px solid #ccc;
+            padding: 8px;
+            margin: 8px;
+        }
+        
+        .container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            max-width: 300px;
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        
+        .icon {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            background: #f0f0f0;
+        }
+        
+        .text-container {
+            flex: 1;
+            min-width: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test File Name Truncation</h1>
+    
+    <div class="container">
+        <div class="icon">📄</div>
+        <div class="text-container">
+            <p class="file-name-truncate" title="very_long_file_name_that_should_be_truncated_because_it_is_too_long_for_the_container.pdf">
+                very_long_file_name_that_should_be_truncated_because_it_is_too_long_for_the_container.pdf
+            </p>
+        </div>
+        <button>❌</button>
+    </div>
+    
+    <div class="container">
+        <div class="icon">📄</div>
+        <div class="text-container">
+            <p class="file-name-truncate" title="short_file.pdf">
+                short_file.pdf
+            </p>
+        </div>
+        <button>❌</button>
+    </div>
+    
+    <div class="container">
+        <div class="icon">📄</div>
+        <div class="text-container">
+            <p class="file-name-truncate" title="medium_length_file_name_that_might_be_truncated.pdf">
+                medium_length_file_name_that_might_be_truncated.pdf
+            </p>
+        </div>
+        <button>❌</button>
+    </div>
+</body>
+</html>

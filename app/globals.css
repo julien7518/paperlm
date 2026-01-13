@@ -126,15 +126,43 @@
 
 /* Custom styles for PDF sidebar file name truncation */
 .file-name-truncate {
-  @apply truncate max-w-full;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  display: block !important;
+  max-width: 100% !important;
+  width: 100% !important;
 }
 
 .file-info-truncate {
-  @apply truncate max-w-full;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  display: block !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* Specific styles for PDF sidebar file items */
+.pdf-sidebar-file-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.5rem !important;
+  padding: 0.5rem !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0.5rem !important;
+}
+
+.pdf-sidebar-file-content {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.pdf-sidebar-file-text {
+  flex: 1 !important;
+  min-width: 0 !important;
 }
