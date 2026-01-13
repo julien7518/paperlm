@@ -43,6 +43,7 @@ interface PdfSidebarContentProps {
     embeddingCount: number;
     totalChunkSize: number;
   };
+
 }
 
 export function PdfSidebarContent({
@@ -64,6 +65,7 @@ export function PdfSidebarContent({
     embeddingCount: 0,
     totalChunkSize: 0,
   },
+
 }: PdfSidebarContentProps) {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -125,6 +127,8 @@ export function PdfSidebarContent({
               Browse Files
             </Button>
           </div>
+          
+
         </CardContent>
       </Card>
 
