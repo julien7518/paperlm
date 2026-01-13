@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
+import { CollapsibleStatusCard } from "./CollapsibleStatusCard";
 
 interface PdfSidebarContentProps {
   onFileUpload: (files: File[]) => void;
@@ -87,32 +88,11 @@ export function PdfSidebarContent({
 
   return (
     <div className="flex flex-col h-full gap-4">
-      {/* Model Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            {embeddingModelStatus === "ready" ? (
-              <CheckCircle2 className="size-4 text-green-500" />
-            ) : embeddingModelStatus === "loading" ? (
-              <Loader2 className="size-4 text-blue-500 animate-spin" />
-            ) : (
-              <AlertCircle className="size-4 text-red-500" />
-            )}
-            Embedding Model
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              {embeddingModelStatus === "ready"
-                ? "Xenova/all-MiniLM-L6-v2 ready"
-                : embeddingModelStatus === "loading"
-                ? "Loading Xenova model..."
-                : "Model failed to load"}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Collapsible Status Card (Embedding Model + Memory Bank) */}
+      <CollapsibleStatusCard
+        embeddingModelStatus={embeddingModelStatus}
+        memoryStats={memoryStats}
+      />
 
       {/* Dropzone Section */}
       <Card className="gap-4">
@@ -185,38 +165,6 @@ export function PdfSidebarContent({
           </CardContent>
         </Card>
       )}
-
-      {/* Memory Bank Visualization */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileText className="h-4 w-4 text-blue-500" />
-            Memory Bank
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">Documents</p>
-              <p className="text-xs font-mono">{memoryStats.documentCount}</p>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">Chunks</p>
-              <p className="text-xs font-mono">{memoryStats.chunkCount}</p>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">Embeddings</p>
-              <p className="text-xs font-mono">{memoryStats.embeddingCount}</p>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">Storage</p>
-              <p className="text-xs font-mono">
-                {Math.round(memoryStats.totalChunkSize / 1024)} KB
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Error Alert */}
       {error && (

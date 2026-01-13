@@ -3,7 +3,15 @@
 import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, CornerUpLeft } from "lucide-react";
+import {
+  Copy,
+  Check,
+  CornerUpLeft,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import { CitationBadge } from "./CitationBadge";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { toast } from "sonner";
 
@@ -47,6 +55,7 @@ interface ChatMessageProps {
   content: string;
   isStreaming?: boolean;
   onReply?: (content: string) => void;
+  citations?: Array<{ source: string; chunkId: string; content?: string }>;
 }
 
 export function ChatMessage({
@@ -54,6 +63,7 @@ export function ChatMessage({
   content,
   isStreaming,
   onReply,
+  citations,
 }: ChatMessageProps) {
   const [copied, setCopied] = useState(false);
 
@@ -213,6 +223,24 @@ export function ChatMessage({
             {isStreaming && (
               <div className="mt-2 text-xs opacity-70 flex items-center gap-2">
                 <span className="animate-pulse">●</span> Thinking…
+              </div>
+            )}
+
+            {citations && citations.length > 0 && role === "assistant" && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <div className="text-xs font-medium text-blue-600 mb-2 flex items-center gap-1">
+                  <BookOpen className="h-3 w-3" />
+                  <span>SOURCES CITED ({citations.length}):</span>
+                </div>
+                <div className="space-y-2">
+                  {citations.map((citation, index) => (
+                    <CitationBadge
+                      key={index}
+                      citation={citation}
+                      index={index}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </div>
